@@ -1,6 +1,6 @@
 """
-Smart Public Transport Advisor — Hong Kong MTR
-
+Smart Public Transport Advisor — Hong Kong MTR and Singapore MRT
+===============================================
 Reads a transport network from a JSON data file and finds/ranks journeys
 based on user preferences. Uses official MTR fare lookup table.
 
@@ -8,7 +8,7 @@ Usage:
     python3 transport_advisor.py
 
 Data file:
-    network_data.json
+    hongkong_data.json and singapore_data.json (must be in the same directory)
 """
 
 import json
@@ -78,8 +78,14 @@ def get_fare(network: dict, origin: str, dest: str, fare_type: str) -> float:
 MAX_SEGMENTS = 10
 MAX_ROUTES   = 12
 
-def find_routes(graph: dict, origin: str, destination: str) -> list:
-    """DFS with depth cap. Returns list of routes (each route = list of edge dicts)."""
+def find_routes(graph: dict, origin: str, destination: str,
+                excluded_lines: set = None) -> list:
+    """DFS with depth cap. Returns list of routes (each route = list of edge dicts).
+    excluded_lines: set of line names to avoid (None or empty = no restriction).
+    """
+    if excluded_lines is None:
+        excluded_lines = set()
+
     routes = []
     stack = [(origin, [], {origin})]
 
@@ -95,6 +101,9 @@ def find_routes(graph: dict, origin: str, destination: str) -> list:
 
         for edge in graph.get(current, []):
             neighbour = edge["to"]
+            # Skip this edge if its line is in the excluded set
+            if edge["line"] in excluded_lines:
+                continue
             if neighbour not in visited:
                 new_edge = dict(edge)
                 new_edge["from_stop"] = current
@@ -159,15 +168,23 @@ DIVIDER  = "─" * 64
 BOLD_DIV = "═" * 64
 
 LINE_COLORS = {
-    "Island":           "🔵",
-    "South Island":     "🟡",
-    "Tsuen Wan":        "🔴",
-    "Kwun Tong":        "🟢",
-    "Tseung Kwan O":    "🟣",
-    "Tung Chung":       "🟠",
-    "East Rail":        "🩵",
-    "Tuen Ma":          "🟤",
-    "Disneyland Resort":"🩷",
+    # Hong Kong MTR
+    "Island":              "🔵",
+    "South Island":        "🟡",
+    "Tsuen Wan":           "🔴",
+    "Kwun Tong":           "🟢",
+    "Tseung Kwan O":       "🟣",
+    "Tung Chung":          "🟠",
+    "East Rail":           "🩵",
+    "Tuen Ma":             "🟤",
+    "Disneyland Resort":   "🩷",
+    # Singapore MRT
+    "North South":         "🔴",
+    "East West":           "🟢",
+    "North East":          "🟣",
+    "Circle":              "🟠",
+    "Downtown":            "🔵",
+    "Thomson East Coast":  "🟤",
 }
 
 def stop_label(sid: str, stop_lookup: dict) -> str:
@@ -251,6 +268,41 @@ def get_fare_type() -> str:
         if c == "2": return "concessionary"
         print("  [!] Enter 1 or 2.")
 
+
+def get_excluded_lines(network: dict) -> set:
+    """Prompt the user to optionally exclude one or more lines from the search."""
+    lines = [l["id"] for l in network.get("lines", [])]
+    if not lines:
+        return set()
+
+    print("\n  Exclude lines? (press ENTER to skip)")
+    print("  Available lines:")
+    for i, line in enumerate(lines, 1):
+        icon = LINE_COLORS.get(line, "⬛")
+        print(f"    {i}  {icon}  {line}")
+    print("  Enter line numbers to exclude separated by spaces (e.g. 1 3),")
+    print("  or press ENTER to use all lines.")
+
+    raw = input("  Exclude: ").strip()
+    if not raw:
+        return set()
+
+    excluded = set()
+    for token in raw.split():
+        if token.isdigit():
+            idx = int(token) - 1
+            if 0 <= idx < len(lines):
+                excluded.add(lines[idx])
+            else:
+                print(f"  [!] '{token}' is not a valid line number, skipped.")
+        else:
+            print(f"  [!] '{token}' is not a valid number, skipped.")
+
+    if excluded:
+        icons = "  ".join(f"{LINE_COLORS.get(l,'⬛')} {l}" for l in excluded)
+        print(f"  ✗ Excluding: {icons}")
+    return excluded
+
 def list_available_networks(data_dir: str) -> list:
     return sorted([f for f in os.listdir(data_dir) if f.endswith("_data.json")])
 
@@ -318,18 +370,28 @@ def main():
                 print("  [!] Origin and destination are the same stop.")
                 continue
 
-            preference = get_preference()
-            fare_type  = get_fare_type()
+            preference     = get_preference()
+            fare_type      = get_fare_type()
+            excluded_lines = get_excluded_lines(network)
+
+            excl_note = ""
+            if excluded_lines:
+                excl_note = "  |  ✗ Excluding: " + ", ".join(excluded_lines)
 
             print(f"\n  Searching: {stop_label(origin, stop_lookup)}  →  {stop_label(destination, stop_lookup)}")
-            print(f"  Preference: {preference.upper()}  |  Fare type: {'Adult' if fare_type=='adult' else 'Child/Senior'}")
+            print(f"  Preference: {preference.upper()}  |  Fare type: {'Adult' if fare_type=='adult' else 'Child/Senior'}{excl_note}")
             print("  Please wait...\n")
 
-            routes = find_routes(graph, origin, destination)
+            routes = find_routes(graph, origin, destination, excluded_lines)
 
             if not routes:
-                print("  [!] No routes found within segment limit.")
-                print(f"      (Max segments: {MAX_SEGMENTS})")
+                if excluded_lines:
+                    print("  [!] No routes found — journey is impossible without the excluded line(s).")
+                    print(f"      Excluded: {', '.join(excluded_lines)}")
+                    print("      Try again without excluding those lines.")
+                else:
+                    print("  [!] No routes found within segment limit.")
+                    print(f"      (Max segments: {MAX_SEGMENTS})")
                 continue
 
             ranked = rank_routes(routes, preference, network, fare_type)
