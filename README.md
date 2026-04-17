@@ -3,7 +3,7 @@
 
 A command-line journey planner for the **Hong Kong MTR** and **Singapore MRT** networks. Given an origin and destination station, it finds multiple routes and ranks them by your preferred criterion — cheapest, fastest, fewest stops, or a balanced score.
 
-## 📖 Section & Navigation
+## 📖 Sections
 [Features](#features) • [Requirements](#requirements) • [Structure](#project-structure) • [Usage](#usage) • [Data Format](#network-data-format) • [Networks](#supported-networks) • [Notes](#notes) • [Team](#group-members)
 
 ---
