@@ -126,5 +126,6 @@ To add a new city, create a `<cityname>_data.json` file in the same directory fo
 ## Notes
 
 - Fares are looked up end-to-end from the bundled fare table. For station pairs not directly listed, a nearest-hub proxy is used.
+- Hong Kong Octopus card fares are approximately 5-10% lower than the single-journey ticket fares stored in the data file.
 - Singapore EZ-Link card fares are approximately 10–15% lower than the single-trip token fares stored in the data file.
 - The route search has a cap of **10 segments** and returns up to **12 candidate routes** before ranking.
