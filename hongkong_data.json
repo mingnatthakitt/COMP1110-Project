@@ -3,7 +3,7 @@
   "network": "MTR",
   "currency": "HKD",
   "fare_effective_date": "30/6/2024",
-  "fare_note": "Fares are official MTR Single Journey Ticket fares (HKD). Octopus card fares are approximately 10-15% lower. Concessionary fares apply to children (3-11) and senior citizens (65+).",
+  "fare_note": "Fares are official MTR Single Journey Ticket fares (HKD). Octopus card fares are approximately 5-15% lower. Concessionary fares apply to children (3-11) and senior citizens (65+).",
 
   "stops": [
     {"id": "KET", "name": "Kennedy Town",       "lines": ["Island"]},
